@@ -1,0 +1,42 @@
+:root{
+  --primary:#2b8cff;
+  --accent:#6c5ce7;
+  --bg1:linear-gradient(135deg,#f6f9ff 0%, #eef6ff 50%, #f3f8ff 100%);
+}
+body,html,#root{height:100%;font-family: 'Poppins', sans-serif;background:var(--bg1);}
+.app-root{min-height:100vh;display:flex;flex-direction:column}
+
+/* Navbar styles */
+.navbar-custom{background:linear-gradient(90deg, rgba(43,140,255,0.95), rgba(108,92,231,0.95));}
+.navbar-custom .nav-link{color:#fff;opacity:0.9}
+.navbar-custom .nav-link.active{font-weight:700;border-bottom:3px solid rgba(255,255,255,0.25)}
+
+/* Cards */
+.card-summary{border-radius:12px;transition:all .25s ease;cursor:pointer}
+.card-summary:hover{transform:translateY(-6px);box-shadow:0 8px 30px rgba(15,23,42,0.15)}
+
+/* Buttons */
+.btn-custom{background:var(--primary);border:none;color:#fff;border-radius:10px;padding:.5rem .8rem;transition:all .18s ease}
+.btn-custom:hover{transform:scale(1.05);background:#1f75d9;color:white}
+
+/* Table */
+.table thead th{background:rgba(0,0,0,0.03)}
+.action-btn{margin-right:6px}
+
+/* Modal tweaks */
+.modal-content{border-radius:12px;box-shadow:0 12px 40px rgba(2,6,23,0.12)}
+
+/* Smooth routes */
+.fade-page{animation:fadeIn .35s ease forwards}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* subtle background */
+.app-bg-hero{background:linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0.3));padding:1.4rem;border-radius:14px}
+
+/* small helpers */
+.small-muted{color:#6b7280}
+
+/* Responsive tweaks */
+@media (max-width:768px){.card-summary{margin-bottom:1rem}} 
+
+
