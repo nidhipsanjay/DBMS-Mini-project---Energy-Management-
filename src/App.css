@@ -1,42 +1,131 @@
-:root{
-  --primary:#2b8cff;
-  --accent:#6c5ce7;
-  --bg1:linear-gradient(135deg,#f6f9ff 0%, #eef6ff 50%, #f3f8ff 100%);
+/* App.css — Energy Management System GUI */
+
+body {
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+  background: linear-gradient(135deg, #e0f7fa, #e1bee7);
+  min-height: 100vh;
+  overflow-x: hidden;
 }
-body,html,#root{height:100%;font-family: 'Poppins', sans-serif;background:var(--bg1);}
-.app-root{min-height:100vh;display:flex;flex-direction:column}
 
-/* Navbar styles */
-.navbar-custom{background:linear-gradient(90deg, rgba(43,140,255,0.95), rgba(108,92,231,0.95));}
-.navbar-custom .nav-link{color:#fff;opacity:0.9}
-.navbar-custom .nav-link.active{font-weight:700;border-bottom:3px solid rgba(255,255,255,0.25)}
+.navbar {
+  background-color: #2b8cff;
+  transition: all 0.3s ease;
+}
 
-/* Cards */
-.card-summary{border-radius:12px;transition:all .25s ease;cursor:pointer}
-.card-summary:hover{transform:translateY(-6px);box-shadow:0 8px 30px rgba(15,23,42,0.15)}
+.navbar .nav-link {
+  color: white !important;
+  font-weight: 500;
+}
 
-/* Buttons */
-.btn-custom{background:var(--primary);border:none;color:#fff;border-radius:10px;padding:.5rem .8rem;transition:all .18s ease}
-.btn-custom:hover{transform:scale(1.05);background:#1f75d9;color:white}
+.navbar .nav-link.active {
+  border-bottom: 3px solid #ffffff;
+}
 
-/* Table */
-.table thead th{background:rgba(0,0,0,0.03)}
-.action-btn{margin-right:6px}
+.navbar .nav-link:hover {
+  color: #dff0ff !important;
+}
 
-/* Modal tweaks */
-.modal-content{border-radius:12px;box-shadow:0 12px 40px rgba(2,6,23,0.12)}
+.card {
+  border: none;
+  border-radius: 15px;
+  transition: all 0.3s ease;
+  background: white;
+}
 
-/* Smooth routes */
-.fade-page{animation:fadeIn .35s ease forwards}
-@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.2);
+}
 
-/* subtle background */
-.app-bg-hero{background:linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0.3));padding:1.4rem;border-radius:14px}
+.btn {
+  transition: all 0.2s ease;
+  border-radius: 8px;
+}
 
-/* small helpers */
-.small-muted{color:#6b7280}
+.btn:hover {
+  transform: scale(1.05);
+  background-color: #2b8cff;
+  color: white;
+  transition: all 0.2s ease;
+}
 
-/* Responsive tweaks */
-@media (max-width:768px){.card-summary{margin-bottom:1rem}} 
+/* Smooth page fade-in */
+.page-enter {
+  opacity: 0;
+}
+.page-enter-active {
+  opacity: 1;
+  transition: opacity 300ms;
+}
+.page-exit {
+  opacity: 1;
+}
+.page-exit-active {
+  opacity: 0;
+  transition: opacity 300ms;
+}
 
+/* Fix modal pop-up cutting issue */
+.modal.show {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+}
 
+.modal-dialog {
+  max-width: 600px;
+  margin: auto;
+  transform: none !important;
+}
+
+.modal-content {
+  border-radius: 12px;
+  box-shadow: 0 4px 25px rgba(0, 0, 0, 0.3);
+  overflow: visible;
+}
+
+.modal-body {
+  max-height: 75vh;
+  overflow-y: auto;
+}
+
+/* Ensure modals scale properly on small screens */
+@media (max-width: 576px) {
+  .modal-dialog {
+    width: 90%;
+  }
+}
+
+.table {
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.table-hover tbody tr:hover {
+  background-color: rgba(43, 140, 255, 0.1);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Montserrat', sans-serif;
+}
+
+/* Chart container styling */
+.chart-container {
+  background: #fff;
+  border-radius: 15px;
+  box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  margin-top: 30px;
+}
+
+/* Fade-in for content */
+.fade-in {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
