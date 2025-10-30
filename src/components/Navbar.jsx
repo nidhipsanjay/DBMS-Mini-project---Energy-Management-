@@ -1,29 +1,28 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
+// import '..App.css';
 
-export default function Navbar(){
-  const loc = useLocation();
-  const active = (path)=> loc.pathname === path ? 'active' : '';
+export default function Navbar() {
   return (
-    <nav className="navbar navbar-expand-lg navbar-custom px-4 py-3">
+    <nav className="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
       <div className="container-fluid">
-        <Link className="navbar-brand text-white d-flex align-items-center gap-2" to="/">
-          <i className="fa-solid fa-bolt"></i>
-          <span style={{fontWeight:700}}>Energy Management</span>
-        </Link>
-        <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navmenu">
+        <NavLink className="navbar-brand fw-bold" to="/">⚡ Energy Manager</NavLink>
+        <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
           <span className="navbar-toggler-icon"></span>
         </button>
-        <div className="collapse navbar-collapse" id="navmenu">
-          <ul className="navbar-nav ms-auto mb-2 mb-lg-0">
-            <li className="nav-item"><Link className={`nav-link ${active('/')} text-white`} to="/">Home</Link></li>
-            <li className="nav-item"><Link className={`nav-link ${active('/plants')} text-white`} to="/plants">🌿 Plants</Link></li>
-            <li className="nav-item"><Link className={`nav-link ${active('/regions')} text-white`} to="/regions">🗺️ Regions</Link></li>
-            <li className="nav-item"><Link className={`nav-link ${active('/employees')} text-white`} to="/employees">👩‍🔧 Employees</Link></li>
-            <li className="nav-item"><Link className={`nav-link ${active('/reports')} text-white`} to="/reports">📊 Reports</Link></li>
+        <div className="collapse navbar-collapse" id="navbarNav">
+          <ul className="navbar-nav ms-auto">
+            <li className="nav-item"><NavLink to="/" className="nav-link">🏠 Home</NavLink></li>
+            <li className="nav-item"><NavLink to="/energytypes" className="nav-link">🌿 Energy Types</NavLink></li>
+            <li className="nav-item"><NavLink to="/regions" className="nav-link">🗺️ Regions</NavLink></li>
+            <li className="nav-item"><NavLink to="/plants" className="nav-link">⚙️ Power Plants</NavLink></li>
+            <li className="nav-item"><NavLink to="/employees" className="nav-link">👩‍🔧 Employees</NavLink></li>
+            <li className="nav-item"><NavLink to="/production" className="nav-link">📈 Production Logs</NavLink></li>
+            <li className="nav-item"><NavLink to="/distribution" className="nav-link">🔄 Distribution</NavLink></li>
+            <li className="nav-item"><NavLink to="/reports" className="nav-link">📊 Reports</NavLink></li>
           </ul>
         </div>
       </div>
     </nav>
-  )
+  );
 }
