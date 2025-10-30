@@ -1,27 +1,31 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Home from './components/home';
 import Plants from './components/plants';
 import Regions from './components/regions';
+import EnergyTypes from './components/EnergyType';
 import Employees from './components/employees';
+import Production from './components/Production';
+import Distribution from './components/Distribution';
 import Reports from './components/reports';
+import './App.css';
 
-export default function App(){
+export default function App() {
   return (
     <Router>
-      <div className="app-root">
-        <Navbar />
-        <main className="container-fluid mt-4">
-          <Routes>
-            <Route path="/" element={<Home/>} />
-            <Route path="/plants" element={<Plants/>} />
-            <Route path="/regions" element={<Regions/>} />
-            <Route path="/employees" element={<Employees/>} />
-            <Route path="/reports" element={<Reports/>} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </main>
+      <Navbar />
+      <div className="container mt-5 pt-4">
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/energytypes" element={<EnergyTypes />} />
+          <Route path="/regions" element={<Regions />} />
+          <Route path="/plants" element={<Plants />} />
+          <Route path="/employees" element={<Employees />} />
+          <Route path="/production" element={<Production />} />
+          <Route path="/distribution" element={<Distribution />} />
+          <Route path="/reports" element={<Reports />} />
+        </Routes>
       </div>
     </Router>
   );

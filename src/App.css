@@ -129,3 +129,39 @@ h1, h2, h3, h4, h5, h6 {
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background: linear-gradient(135deg, #e3f2fd, #fff);
+}
+
+.fade-page {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.nav-link.active {
+  color: #2b8cff !important;
+  font-weight: 600;
+}
+
+.table th {
+  white-space: nowrap;
+}
+
+.btn-primary:hover {
+  transform: scale(1.05);
+  background-color: #2b8cff;
+  color: white;
+  transition: all 0.2s ease;
+}
+.btn-danger:hover {
+  transform: scale(1.05);
+  background-color: #ff4d4d;
+  color: white;
+  transition: all 0.2s ease;
+}

@@ -12,8 +12,8 @@ app.use(express.json());
 const db = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "",  // <-- update this!
-  database: "EnergyManagement"
+  password: "appa2amma", // your MySQL password
+  database: "EnergyManagement",
 });
 
 db.connect((err) => {
@@ -22,7 +22,7 @@ db.connect((err) => {
 });
 
 // ----------------------------
-// CRUD endpoints for all tables
+// CRUD + Data endpoints
 // ----------------------------
 
 // 🌿 Energy Types
@@ -95,7 +95,7 @@ app.get("/api/distribution", (req, res) => {
   });
 });
 
-// 📊 Reports (example aggregated)
+// 📊 Reports by Region (Chart.js)
 app.get("/api/report/aggregate", (req, res) => {
   const sql = `
     SELECT r.regionName, SUM(pl.energyProduced) AS totalProduced
@@ -110,7 +110,159 @@ app.get("/api/report/aggregate", (req, res) => {
   });
 });
 
-// ✅ Start the backend server
+// 📈 Dashboard Summary (for Home.jsx)
+app.get("/api/summary", (req, res) => {
+  const sql = `
+    SELECT 
+      (SELECT COUNT(*) FROM PowerPlant) AS totalPlants,
+      (SELECT COUNT(*) FROM Employee) AS totalEmployees,
+      (SELECT IFNULL(SUM(energyProduced),0) FROM ProductionLog) AS totalEnergy
+  `;
+  db.query(sql, (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results[0]);
+  });
+});
+
+// ================== ENERGY TYPE ==================
+app.post("/api/energy-types", (req, res) => {
+  db.query("INSERT INTO EnergyType SET ?", req.body, (err, result) => {
+    if (err) return res.status(500).send(err);
+    res.json({ energyTypeID: result.insertId });
+  });
+});
+
+app.put("/api/energy-types/:id", (req, res) => {
+  db.query("UPDATE EnergyType SET ? WHERE energyTypeID = ?", [req.body, req.params.id], (err) => {
+    if (err) return res.status(500).send(err);
+    res.json({ success: true });
+  });
+});
+
+app.delete("/api/energy-types/:id", (req, res) => {
+  db.query("DELETE FROM EnergyType WHERE energyTypeID = ?", [req.params.id], (err) => {
+    if (err) return res.status(500).send(err);
+    res.json({ success: true });
+  });
+});
+
+
+// ================== REGION ==================
+app.post("/api/regions", (req, res) => {
+  db.query("INSERT INTO Region SET ?", req.body, (err, result) => {
+    if (err) return res.status(500).send(err);
+    res.json({ regionID: result.insertId });
+  });
+});
+
+app.put("/api/regions/:id", (req, res) => {
+  db.query("UPDATE Region SET ? WHERE regionID = ?", [req.body, req.params.id], (err) => {
+    if (err) return res.status(500).send(err);
+    res.json({ success: true });
+  });
+});
+
+app.delete("/api/regions/:id", (req, res) => {
+  db.query("DELETE FROM Region WHERE regionID = ?", [req.params.id], (err) => {
+    if (err) return res.status(500).send(err);
+    res.json({ success: true });
+  });
+});
+
+
+// ================== POWER PLANT ==================
+app.post("/api/plants", (req, res) => {
+  db.query("INSERT INTO PowerPlant SET ?", req.body, (err, result) => {
+    if (err) return res.status(500).send(err);
+    res.json({ plantID: result.insertId });
+  });
+});
+
+app.put("/api/plants/:id", (req, res) => {
+  db.query("UPDATE PowerPlant SET ? WHERE plantID = ?", [req.body, req.params.id], (err) => {
+    if (err) return res.status(500).send(err);
+    res.json({ success: true });
+  });
+});
+
+app.delete("/api/plants/:id", (req, res) => {
+  db.query("DELETE FROM PowerPlant WHERE plantID = ?", [req.params.id], (err) => {
+    if (err) return res.status(500).send(err);
+    res.json({ success: true });
+  });
+});
+
+
+// ================== EMPLOYEE ==================
+app.post("/api/employees", (req, res) => {
+  db.query("INSERT INTO Employee SET ?", req.body, (err, result) => {
+    if (err) return res.status(500).send(err);
+    res.json({ employeeID: result.insertId });
+  });
+});
+
+app.put("/api/employees/:id", (req, res) => {
+  db.query("UPDATE Employee SET ? WHERE employeeID = ?", [req.body, req.params.id], (err) => {
+    if (err) return res.status(500).send(err);
+    res.json({ success: true });
+  });
+});
+
+app.delete("/api/employees/:id", (req, res) => {
+  db.query("DELETE FROM Employee WHERE employeeID = ?", [req.params.id], (err) => {
+    if (err) return res.status(500).send(err);
+    res.json({ success: true });
+  });
+});
+
+
+// ================== PRODUCTION LOG ==================
+app.post("/api/production-logs", (req, res) => {
+  db.query("INSERT INTO ProductionLog SET ?", req.body, (err, result) => {
+    if (err) return res.status(500).send(err);
+    res.json({ logID: result.insertId });
+  });
+});
+
+app.put("/api/production-logs/:id", (req, res) => {
+  db.query("UPDATE ProductionLog SET ? WHERE logID = ?", [req.body, req.params.id], (err) => {
+    if (err) return res.status(500).send(err);
+    res.json({ success: true });
+  });
+});
+
+app.delete("/api/production-logs/:id", (req, res) => {
+  db.query("DELETE FROM ProductionLog WHERE logID = ?", [req.params.id], (err) => {
+    if (err) return res.status(500).send(err);
+    res.json({ success: true });
+  });
+});
+
+
+// ================== DISTRIBUTION ==================
+app.post("/api/distributions", (req, res) => {
+  db.query("INSERT INTO Distribution SET ?", req.body, (err, result) => {
+    if (err) return res.status(500).send(err);
+    res.json({ distributionID: result.insertId });
+  });
+});
+
+app.put("/api/distributions/:id", (req, res) => {
+  db.query("UPDATE Distribution SET ? WHERE distributionID = ?", [req.body, req.params.id], (err) => {
+    if (err) return res.status(500).send(err);
+    res.json({ success: true });
+  });
+});
+
+app.delete("/api/distributions/:id", (req, res) => {
+  db.query("DELETE FROM Distribution WHERE distributionID = ?", [req.params.id], (err) => {
+    if (err) return res.status(500).send(err);
+    res.json({ success: true });
+  });
+});
+
+
+// ✅ Start backend server
 app.listen(5000, () => {
   console.log("🚀 Backend running at http://localhost:5000");
 });
