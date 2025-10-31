@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Modal, Button } from 'react-bootstrap';
 
-export default function CrudTemplate({ title, apiEndpoint, columns, idField }) {
+export default function CrudTemplate({ title, apiEndpoint, columns, idField, onRowClick }) { // 🔹 added onRowClick
   const [data, setData] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({});
@@ -92,93 +92,135 @@ export default function CrudTemplate({ title, apiEndpoint, columns, idField }) {
       alert("⚠️ An error occurred while deleting. Check console for details.");
     }
   };
+  const [employeeInfo, setEmployeeInfo] = useState(null);
 
-  return (
-    <div className="fade-page">
-      <h3 className="mb-4 fw-bold">{title}</h3>
-      <Button className="mb-3 btn-primary" onClick={() => openModal()}>
-        + Add New
-      </Button>
+// Fetch and show details when an employee row is clicked
+const handleEmployeeClick = async (employee) => {
+  if (title !== "Employee" || !onRowClick) return;
+  const data = await onRowClick(employee);
+  if (data) setEmployeeInfo(data);
+};
 
-      <div className="table-responsive">
-        {loading ? (
-          <p className="text-center text-muted">Loading...</p>
-        ) : (
-          <table className="table table-striped table-hover align-middle">
-            <thead className="table-dark">
-              <tr>
-                {columns.map((col) => (
-                  <th key={col}>{col}</th>
-                ))}
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.length > 0 ? (
-                data.map((row, idx) => (
-                  <tr key={idx}>
-                    {columns.map((col) => (
-                      <td key={col}>{row[col]}</td>
-                    ))}
-                    <td>
-                      <Button
-                        variant="outline-secondary"
-                        size="sm"
-                        className="me-2"
-                        onClick={() => openModal(row)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="outline-danger"
-                        size="sm"
-                        onClick={() => handleDelete(row)}
-                      >
-                        Delete
-                      </Button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={columns.length + 1} className="text-center text-muted">
-                    No records found
+return (
+  <div className="fade-page">
+    <h3 className="mb-4 fw-bold">{title}</h3>
+    <Button className="mb-3 btn-primary" onClick={() => openModal()}>
+      + Add New
+    </Button>
+
+    <div className="table-responsive">
+      {loading ? (
+        <p className="text-center text-muted">Loading...</p>
+      ) : (
+        <table className="table table-striped table-hover align-middle">
+          <thead className="table-dark">
+            <tr>
+              {columns.map((col) => (
+                <th key={col}>{col}</th>
+              ))}
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.length > 0 ? (
+              data.map((row, idx) => (
+                <tr
+                  key={idx}
+                  style={{ cursor: "pointer" }}
+                  onClick={() => handleEmployeeClick(row)} // 👈 make row clickable
+                >
+                  {columns.map((col) => (
+                    <td key={col}>{row[col]}</td>
+                  ))}
+                  <td>
+                    <Button
+                      variant="outline-secondary"
+                      size="sm"
+                      className="me-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openModal(row);
+                      }}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="outline-danger"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(row);
+                      }}
+                    >
+                      Delete
+                    </Button>
                   </td>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      {/* ✅ Modal */}
-      <Modal show={showModal} onHide={() => setShowModal(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>{editMode ? "Edit" : "Add New"} {title}</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {columns.map((col) => (
-            <div key={col} className="mb-2">
-              <label className="form-label fw-semibold">{col}</label>
-              <input
-                className="form-control"
-                name={col}
-                value={formData[col] || ""}
-                onChange={handleChange}
-                disabled={col === idField} // Prevent editing ID
-              />
-            </div>
-          ))}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowModal(false)}>
-            Cancel
-          </Button>
-          <Button variant="primary" onClick={handleSave}>
-            Save
-          </Button>
-        </Modal.Footer>
-      </Modal>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={columns.length + 1} className="text-center text-muted">
+                  No records found
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      )}
     </div>
-  );
+
+    {/* ✅ Add/Edit Modal */}
+    <Modal show={showModal} onHide={() => setShowModal(false)} centered>
+      <Modal.Header closeButton>
+        <Modal.Title>{editMode ? "Edit" : "Add New"} {title}</Modal.Title>
+      </Modal.Header>
+      <Modal.Body>
+        {columns.map((col) => (
+          <div key={col} className="mb-2">
+            <label className="form-label fw-semibold">{col}</label>
+            <input
+              className="form-control"
+              name={col}
+              value={formData[col] || ""}
+              onChange={handleChange}
+              disabled={col === idField}
+            />
+          </div>
+        ))}
+      </Modal.Body>
+      <Modal.Footer>
+        <Button variant="secondary" onClick={() => setShowModal(false)}>
+          Cancel
+        </Button>
+        <Button variant="primary" onClick={handleSave}>
+          Save
+        </Button>
+      </Modal.Footer>
+    </Modal>
+
+    {/* ✅ Employee Info Modal */}
+    {/* ✅ Employee Info Modal */}
+<Modal show={!!employeeInfo} onHide={() => setEmployeeInfo(null)} centered>
+  <Modal.Header closeButton>
+    <Modal.Title>Employee Assignment</Modal.Title>
+  </Modal.Header>
+  <Modal.Body>
+  {employeeInfo ? (
+    <div className="p-3 bg-light rounded shadow-sm">
+      <p><strong>👤 Employee:</strong> {employeeInfo.employeeName}</p>
+      <p><strong>📍 Region:</strong> {employeeInfo.regionName}</p>
+      <p><strong>🏭 Power Plant:</strong> {employeeInfo.plantName}</p>
+      <p><strong>⚡ Energy Type:</strong> {employeeInfo.energyType || "N/A"}</p>
+    </div>
+  ) : (
+    <p>Loading details...</p>
+  )}
+</Modal.Body>
+
+</Modal>
+
+  </div>
+);
+
+ 
 }

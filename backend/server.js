@@ -25,7 +25,7 @@ db.connect((err) => {
   else console.log("✅ Connected to MySQL Database");
 });
 
-// ✅ Helper to return refreshed data
+// ✅ Helper to refresh data
 const refreshData = (table, res, err) => {
   if (err) {
     console.error("❌ SQL Error:", err);
@@ -37,9 +37,9 @@ const refreshData = (table, res, err) => {
   });
 };
 
-// ✅ Generic CRUD generator (auto creates endpoints)
+// ✅ Generic CRUD routes
 function createCrudRoutes(endpoint, table, idField) {
-  // READ (Get all)
+  // READ
   app.get(`/api/${endpoint}`, (_, res) => {
     db.query(`SELECT * FROM ${table}`, (err, results) => {
       if (err) return res.status(500).json({ error: err.message });
@@ -47,7 +47,7 @@ function createCrudRoutes(endpoint, table, idField) {
     });
   });
 
-  // CREATE (Add new)
+  // CREATE
   app.post(`/api/${endpoint}`, (req, res) => {
     const data = req.body;
     console.log(`🟢 POST /api/${endpoint}`, data);
@@ -56,14 +56,13 @@ function createCrudRoutes(endpoint, table, idField) {
     );
   });
 
-  // UPDATE (Edit record)
+  // UPDATE
   app.put(`/api/${endpoint}/:id`, (req, res) => {
     const { id } = req.params;
     const data = req.body;
-
     if (!id || id === "undefined" || id === "null") {
       console.warn(`⚠️ Invalid ID for PUT /api/${endpoint}:`, id);
-      return res.status(400).json({ error: "Invalid or missing ID parameter" });
+      return res.status(400).json({ error: "Invalid or missing ID" });
     }
 
     console.log(`🟡 PUT /api/${endpoint}/${id}`, data);
@@ -75,10 +74,9 @@ function createCrudRoutes(endpoint, table, idField) {
   // DELETE
   app.delete(`/api/${endpoint}/:id`, (req, res) => {
     const { id } = req.params;
-
     if (!id || id === "undefined" || id === "null") {
       console.warn(`⚠️ Invalid ID for DELETE /api/${endpoint}:`, id);
-      return res.status(400).json({ error: "Invalid or missing ID parameter" });
+      return res.status(400).json({ error: "Invalid or missing ID" });
     }
 
     console.log(`🔴 DELETE /api/${endpoint}/${id}`);
@@ -88,14 +86,60 @@ function createCrudRoutes(endpoint, table, idField) {
   });
 }
 
-// ✅ Define all CRUD endpoints (based on your schema)
+// ✅ Define CRUD endpoints
 createCrudRoutes("energytypes", "EnergyType", "energyTypeID");
 createCrudRoutes("regions", "Region", "regionID");
 createCrudRoutes("plants", "PowerPlant", "plantID");
-// ✅ fixed (matches frontend names)
 createCrudRoutes("production", "ProductionLog", "logID");
 createCrudRoutes("distribution", "Distribution", "distributionID");
 createCrudRoutes("employees", "Employee", "empID");
+
+// ✅ Stored function: Get total salary
+app.get("/api/total-salary/:plantID", (req, res) => {
+  const { plantID } = req.params;
+  db.query("SELECT GetTotalSalary(?) AS totalSalary", [plantID], (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results[0]);
+  });
+});
+
+// ✅ Stored procedure: Add employee
+app.post("/api/add-employee-procedure", (req, res) => {
+  const { name, role, salary, hireDate, plantID, email } = req.body;
+  const sql = "CALL AddEmployee(?, ?, ?, ?, ?, ?)";
+  db.query(sql, [name, role, salary, hireDate, plantID, email], (err) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: "Employee added successfully via procedure" });
+  });
+});
+
+// ✅ Get employee details (fixed, consistent name)
+app.get("/api/employee/details/:empID", (req, res) => {
+  const { empID } = req.params;
+
+  const query = `
+    SELECT 
+      e.name AS employeeName,
+      COALESCE(r.regionName, 'N/A') AS regionName,
+      COALESCE(p.name, 'N/A') AS plantName,
+      COALESCE(et.typeName, 'N/A') AS energyType
+    FROM Employee e
+    LEFT JOIN PowerPlant p ON e.plantID = p.plantID
+    LEFT JOIN Region r ON p.regionID = r.regionID
+    LEFT JOIN EnergyType et ON p.energyTypeID = et.energyTypeID
+    WHERE e.empID = ?;
+  `;
+
+  db.query(query, [empID], (err, results) => {
+    if (err) {
+      console.error("❌ SQL Error:", err);
+      return res.status(500).json({ error: err.message });
+    }
+
+    console.log("🔍 Employee details result:", results);
+    res.json(results[0] || {});
+  });
+});
 
 // ✅ Start Server
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
