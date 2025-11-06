@@ -15,7 +15,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 const db = mysql.createPool({
   host: "localhost",
   user: "root",
-  password: "",
+  password: "sql123$",
   database: "EnergyManagement",
   waitForConnections: true,
   connectionLimit: 10,
@@ -300,6 +300,43 @@ app.get("/api/report/aggregate", async (req, res) => {
   } catch (err) {
     console.error("❌ Error fetching dashboard summary:", err);
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// =======================
+// 🧠 LOGIN ENDPOINT
+// =======================
+app.post("/api/login", async (req, res) => {
+  console.log("📩 Login request received:", req.body);
+
+  const { email } = req.body;
+
+  if (!email) return res.status(400).json({ success: false, message: "Email is required" });
+
+  try {
+    const [rows] = await promiseDb.query(
+      "SELECT empID, name, role, email FROM Employee WHERE email = ?",
+      [email]
+    );
+
+    if (rows.length === 0) {
+      return res.status(401).json({ success: false, message: "Email not found" });
+    }
+
+    const user = rows[0];
+    res.json({
+      success: true,
+      message: "Login successful",
+      user: {
+        empID: user.empID,
+        name: user.name,
+        role: user.role,
+        email: user.email,
+      },
+    });
+  } catch (err) {
+    console.error("❌ Login error:", err);
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
 });
 

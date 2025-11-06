@@ -3,6 +3,14 @@ import { Modal, Button } from 'react-bootstrap';
 import axios from 'axios';
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import {
+  User,
+  MapPin,
+  Factory,
+  Zap,
+  IndianRupee,
+} from "lucide-react";
+
 
 export default function CrudTemplate({ title, apiEndpoint, columns: initialColumns = [], idField, onRowClick }) {
   const [data, setData] = useState([]);
@@ -264,68 +272,76 @@ export default function CrudTemplate({ title, apiEndpoint, columns: initialColum
         )}
       </div>
 
+      
       {/* Add/Edit Modal */}
-      <Modal show={showModal} onHide={() => setShowModal(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>{editMode ? `Edit ${title}` : `Add New ${title}`}</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {columns.map((col) => <div key={col} className="mb-3">{renderField(col)}</div>)}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowModal(false)}>Cancel</Button>
-          <Button variant="primary" onClick={handleSave}>Save</Button>
-        </Modal.Footer>
-      </Modal>
+<Modal show={showModal} onHide={() => setShowModal(false)} centered>
+  <Modal.Header closeButton>
+    <Modal.Title>{editMode ? `Edit ${title}` : `Add New ${title}`}</Modal.Title>
+  </Modal.Header>
+  <Modal.Body>
+    {columns.map((col) => (
+      <div key={col} className="mb-3">
+        {renderField(col)}
+      </div>
+    ))}
+  </Modal.Body>
+  <Modal.Footer>
+    <Button variant="secondary" onClick={() => setShowModal(false)}>Cancel</Button>
+    <Button variant="primary" onClick={handleSave}>
+      {editMode ? "Save Changes" : "Add Record"}
+    </Button>
+  </Modal.Footer>
+</Modal>
 
-      {/* Employee Info Modal */}
-      <Modal show={!!employeeInfo} onHide={() => setEmployeeInfo(null)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>Employee Assignment</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {employeeInfo ? (
-            <div className="p-3 bg-light rounded">
-              <p><strong>👤 Employee:</strong> {employeeInfo.employeeName}</p>
-              <p><strong>📍 Region:</strong> {employeeInfo.regionName}</p>
-              <p><strong>🏭 Power Plant:</strong> {employeeInfo.plantName}</p>
-              <p><strong>⚡ Energy Type:</strong> {employeeInfo.energyType || "N/A"}</p>
-            </div>
-          ) : <p>Loading...</p>}
-        </Modal.Body>
-      </Modal>
+     {/* Employee Info Modal */}
+<Modal show={!!employeeInfo} onHide={() => setEmployeeInfo(null)} centered>
+  <Modal.Header closeButton>
+    <Modal.Title>Employee Assignment</Modal.Title>
+  </Modal.Header>
+  <Modal.Body>
+    {employeeInfo ? (
+      <div className="p-3 bg-light rounded">
+        <p><User size={18} className="me-2 text-primary" /> <strong>Employee:</strong> {employeeInfo.employeeName}</p>
+        <p><MapPin size={18} className="me-2 text-danger" /> <strong>Region:</strong> {employeeInfo.regionName}</p>
+        <p><Factory size={18} className="me-2 text-secondary" /> <strong>Power Plant:</strong> {employeeInfo.plantName}</p>
+        <p><Zap size={18} className="me-2 text-warning" /> <strong>Energy Type:</strong> {employeeInfo.energyType || "N/A"}</p>
+      </div>
+    ) : <p>Loading...</p>}
+  </Modal.Body>
+</Modal>
 
-      {/* Plant Modal */}
-      <Modal show={!!plantInfo} onHide={() => setPlantInfo(null)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>Power Plant Details</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {plantInfo ? (
-            <div className="p-3 bg-light rounded">
-              <p><strong>🏭 Plant:</strong> {plantInfo.name}</p>
-              <p><strong>📍 Location:</strong> {plantInfo.location}</p>
-              <p><strong>⚡ Capacity:</strong> {plantInfo.capacity}</p>
-              <p><strong>💰 Total Salary:</strong> ₹{Number(totalSalary || 0).toLocaleString()}</p>
-            </div>
-          ) : <p>Loading...</p>}
-        </Modal.Body>
-      </Modal>
+{/* Plant Modal */}
+<Modal show={!!plantInfo} onHide={() => setPlantInfo(null)} centered>
+  <Modal.Header closeButton>
+    <Modal.Title>Power Plant Details</Modal.Title>
+  </Modal.Header>
+  <Modal.Body>
+    {plantInfo ? (
+      <div className="p-3 bg-light rounded">
+        <p><Factory size={18} className="me-2 text-secondary" /> <strong>Plant:</strong> {plantInfo.name}</p>
+        <p><MapPin size={18} className="me-2 text-danger" /> <strong>Location:</strong> {plantInfo.location}</p>
+        <p><Zap size={18} className="me-2 text-warning" /> <strong>Capacity:</strong> {plantInfo.capacity}</p>
+        <p><IndianRupee size={18} className="me-2 text-success" /> <strong>Total Salary:</strong> ₹{Number(totalSalary || 0).toLocaleString()}</p>
+      </div>
+    ) : <p>Loading...</p>}
+  </Modal.Body>
+</Modal>
 
-      {/* Region Modal */}
-      <Modal show={!!regionSummary} onHide={() => setRegionSummary(null)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>Region Energy Summary</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {regionSummary ? (
-            <div className="p-3 bg-light rounded">
-              <p><strong>📍 Region:</strong> {regionSummary.regionName}</p>
-              <p><strong>🏭 Plants Serving:</strong> {regionSummary.plantsServing ?? 0}</p>
-            </div>
-          ) : <p>Loading...</p>}
-        </Modal.Body>
-      </Modal>
+{/* Region Modal */}
+<Modal show={!!regionSummary} onHide={() => setRegionSummary(null)} centered>
+  <Modal.Header closeButton>
+    <Modal.Title>Region Energy Summary</Modal.Title>
+  </Modal.Header>
+  <Modal.Body>
+    {regionSummary ? (
+      <div className="p-3 bg-light rounded">
+        <p><MapPin size={18} className="me-2 text-danger" /> <strong>Region:</strong> {regionSummary.regionName}</p>
+        <p><Factory size={18} className="me-2 text-secondary" /> <strong>Plants Serving:</strong> {regionSummary.plantsServing ?? 0}</p>
+      </div>
+    ) : <p>Loading...</p>}
+  </Modal.Body>
+</Modal>
+
     </div>
   );
 }
