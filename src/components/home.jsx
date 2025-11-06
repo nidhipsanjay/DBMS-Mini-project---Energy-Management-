@@ -9,12 +9,17 @@ export default function Home() {
     fetch('http://localhost:5000/api/report/aggregate')
       .then(r => r.json())
       .then(data => {
-        const totalPlants = data.length;
-        const totalEnergy = data.reduce((sum, r) => sum + (r.totalProduced || 0), 0);
-        setSummary({ plants: totalPlants, employees: 10, energy: totalEnergy });
+        const totals = data.totals || {};
+        setSummary({
+          plants: totals.totalPlants || 0,
+          employees: totals.totalEmployees || 0,
+          energy: totals.totalEnergy || 0
+        });
       })
-      .catch(() => setSummary({ plants: 5, employees: 48, energy: 123456 }));
+      .catch(err => console.error(err));
   }, []);
+
+
 
   return (
     <div className="fade-page">

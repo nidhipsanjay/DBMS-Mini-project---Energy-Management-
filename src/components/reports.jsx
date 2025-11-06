@@ -1,51 +1,148 @@
-import React, { useEffect, useState } from 'react';
-import { Bar, Pie } from 'react-chartjs-2';
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend } from 'chart.js';
-ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend);
-
+import React, { useState, useEffect } from "react";
+import { Button, Modal, Table } from "react-bootstrap";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 
 export default function Reports() {
-    const [regionData, setRegionData] = useState({ labels: [], datasets: [] });
-    const [employeeData, setEmployeeData] = useState({ labels: [], datasets: [] });
+  const [data, setData] = useState([]);
+  const [show, setShow] = useState(false);
 
+  const [energySummary, setEnergySummary] = useState([]);
+  const [selectedEnergyType, setSelectedEnergyType] = useState(1);
 
-    useEffect(() => {
-        // placeholder API - expects {byRegion: [{region,energy}], byPlant: [{plant,employees}] }
-        fetch('http://localhost:5000/api/report/aggregate')
-            .then(r => r.json()).then(payload => {
-                const byRegion = payload.byRegion || [{ region: 'North', energy: 400 }, { region: 'South', energy: 210 }, { region: 'East', energy: 340 }];
-                const byPlant = payload.byPlant || [{ plant: 'North Solar', employees: 12 }, { plant: 'East Hydro', employees: 20 }];
-                setRegionData({ labels: byRegion.map(x => x.region), datasets: [{ label: 'Energy (MWh)', data: byRegion.map(x => x.energy), tension: 0.4 }] });
-                setEmployeeData({ labels: byPlant.map(x => x.plant), datasets: [{ label: 'Employees', data: byPlant.map(x => x.employees) }] });
-            })
-            .catch(() => {
-                const byRegion = [{ region: 'North', energy: 400 }, { region: 'South', energy: 210 }, { region: 'East', energy: 340 }];
-                const byPlant = [{ plant: 'North Solar', employees: 12 }, { plant: 'East Hydro', employees: 20 }];
-                setRegionData({ labels: byRegion.map(x => x.region), datasets: [{ label: 'Energy (MWh)', data: byRegion.map(x => x.energy) }] });
-                setEmployeeData({ labels: byPlant.map(x => x.plant), datasets: [{ label: 'Employees', data: byPlant.map(x => x.employees) }] });
-            })
-    }, [])
-    return (
-        <div className="fade-page">
-            <div className="d-flex justify-content-between align-items-center mb-3"><h4 style={{ fontWeight: 700 }}>Reports</h4></div>
-            <div className="row g-3">
-                <div className="col-md-6">
-                    <div className="card p-3">
-                        <h6>Total Energy Produced per Region</h6>
-                        <div style={{ height: 320 }}>
-                            <Bar data={regionData} options={{ plugins: { legend: { display: false }, tooltip: { enabled: true } }, interaction: { mode: 'index' } }} />
-                        </div>
-                    </div>
-                </div>
-                <div className="col-md-6">
-                    <div className="card p-3">
-                        <h6>Employee Count per Power Plant</h6>
-                        <div style={{ height: 320 }}>
-                            <Pie data={employeeData} options={{ plugins: { legend: { position: 'bottom' }, tooltip: { enabled: true } } }} />
-                        </div>
-                    </div>
-                </div>
-            </div>
+  // ✅ Fetch overall report (existing)
+  const fetchReport = async () => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/overall-report`);
+      if (!res.ok) throw new Error("Server returned " + res.status);
+      const json = await res.json();
+
+      if (!json.success) throw new Error(json.error || "Unknown error");
+      setData(json.data || []);
+      setShow(true);
+    } catch (err) {
+      console.error("❌ Report fetch failed:", err);
+      alert("Error fetching overall report. Check console for details.");
+    }
+  };
+
+  // ✅ Fetch energy summary for Pie chart
+  useEffect(() => {
+    fetch(`http://localhost:5000/api/energy-summary/${selectedEnergyType}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.data.length > 0) {
+          const row = data.data[0];
+          setEnergySummary([
+            { name: "Avg Capacity (MW)", value: row.avgCapacity },
+            { name: "Total Supplied (MW)", value: row.totalSupplied },
+            { name: "Avg Demand (MW)", value: row.avgDemand },
+          ]);
+        } else {
+          setEnergySummary([]);
+        }
+      })
+      .catch((err) => console.error("❌ Energy summary fetch failed:", err));
+  }, [selectedEnergyType]);
+
+  const COLORS = ["#8884d8", "#82ca9d", "#ffc658"];
+
+  return (
+    <div className="fade-page p-4">
+      {/* ---- Overall Power Plant Report Section ---- */}
+      <h3 className="fw-bold mb-3">📊 Overall Power Plant Report</h3>
+      <Button onClick={fetchReport} className="mb-3">
+        Generate Report
+      </Button>
+
+      <Modal show={show} onHide={() => setShow(false)} size="lg" centered>
+        <Modal.Header closeButton>
+          <Modal.Title>⚡ Power Plant Performance Summary</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {data.length > 0 ? (
+            <Table striped bordered hover>
+              <thead>
+                <tr>
+                  <th>Plant</th>
+                  <th>Total Produced</th>
+                  <th>Total Distributed</th>
+                  <th>Production Logs</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.map((row, i) => (
+                  <tr key={i}>
+                    <td>{row.plantName}</td>
+                    <td>{row.totalProduced || 0}</td>
+                    <td>{row.totalDistributed || 0}</td>
+                    <td>{row.productionLogs || 0}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          ) : (
+            <p>No records found.</p>
+          )}
+        </Modal.Body>
+      </Modal>
+
+      {/* ---- Energy Summary Pie Chart Section ---- */}
+      <div className="mt-5 p-4 border rounded shadow-sm bg-white">
+        <h4 className="text-center mb-4">🔸 Energy Type Summary</h4>
+
+        {/* Energy Type Selector */}
+        <div className="d-flex justify-content-center mb-4">
+          <select
+            value={selectedEnergyType}
+            onChange={(e) => setSelectedEnergyType(e.target.value)}
+            className="form-select w-auto"
+          >
+            <option value={1}>Solar</option>
+            <option value={2}>Wind</option>
+            <option value={3}>Hydro</option>
+            <option value={4}>Thermal</option>
+          </select>
         </div>
-    )
+
+        {/* Pie Chart */}
+        <div style={{ width: "100%", height: 350 }}>
+          {energySummary.length > 0 ? (
+            <ResponsiveContainer>
+              <PieChart>
+                <Pie
+                  data={energySummary}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={120}
+                  label
+                >
+                  {energySummary.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                    />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend verticalAlign="bottom" />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-center text-muted">
+              No data available for this energy type.
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }

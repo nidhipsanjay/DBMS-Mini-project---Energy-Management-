@@ -10,6 +10,7 @@ export default function CrudTemplate({ title, apiEndpoint, columns, idField, onR
   const [loading, setLoading] = useState(false);
   const [employeeInfo, setEmployeeInfo] = useState(null);
   const [plantInfo, setPlantInfo] = useState(null);
+  const [regionSummary, setRegionSummary] = useState(null); // 🌍 NEW STATE
   const [totalSalary, setTotalSalary] = useState(0);
 
   // Fetch table data
@@ -36,11 +37,9 @@ export default function CrudTemplate({ title, apiEndpoint, columns, idField, onR
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // 🧩 FIX 1: Preserve ID even if undefined due to casing
   const openModal = (item = null) => {
     const record = { ...item };
     if (item && !item[idField]) {
-      // try to find the ID field ignoring case (empID vs EmpID etc)
       const keyMatch = Object.keys(item).find(k => k.toLowerCase() === idField.toLowerCase());
       if (keyMatch) record[idField] = item[keyMatch];
     }
@@ -50,51 +49,48 @@ export default function CrudTemplate({ title, apiEndpoint, columns, idField, onR
   };
 
   const handleSave = async () => {
-  const method = editMode ? "PUT" : "POST";
-  const url = editMode ? `${apiEndpoint}/${formData[idField]}` : apiEndpoint;
+    const method = editMode ? "PUT" : "POST";
+    const url = editMode ? `${apiEndpoint}/${formData[idField]}` : apiEndpoint;
 
-  try {
-    // 🩵 Sanitize date fields before sending to backend
-    const cleanedData = { ...formData };
-    Object.keys(cleanedData).forEach((key) => {
-      const value = cleanedData[key];
-      if (value && typeof value === "string" && value.includes("T")) {
-        // check if it's a valid date string
-        const d = new Date(value);
-        if (!isNaN(d)) cleanedData[key] = d.toISOString().split("T")[0]; // keep only YYYY-MM-DD
+    try {
+      const cleanedData = { ...formData };
+      Object.keys(cleanedData).forEach((key) => {
+        const value = cleanedData[key];
+        if (value && typeof value === "string" && value.includes("T")) {
+          const d = new Date(value);
+          if (!isNaN(d)) cleanedData[key] = d.toISOString().split("T")[0];
+        }
+      });
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(cleanedData),
+      });
+      const json = await res.json();
+
+      if (!json || json.success !== true) {
+        console.error("Save failed response:", json);
+        throw new Error(json?.error || "Save failed");
       }
-    });
 
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(cleanedData),
-    });
-    const json = await res.json();
-
-    if (!json || json.success !== true) {
-      console.error("Save failed response:", json);
-      throw new Error(json?.error || "Save failed");
-    }
-
-    // Refresh total salary if relevant
-    if (plantInfo && formData.plantID && Number(formData.plantID) === Number(plantInfo.plantID)) {
-      try {
-        const s = await axios.get(`http://localhost:5000/api/total-salary/${plantInfo.plantID}`);
-        setTotalSalary(s.data?.totalSalary || 0);
-      } catch (e) {
-        console.error("Failed to refresh salary after save:", e);
+      if (plantInfo && formData.plantID && Number(formData.plantID) === Number(plantInfo.plantID)) {
+        try {
+          const s = await axios.get(`http://localhost:5000/api/total-salary/${plantInfo.plantID}`);
+          setTotalSalary(s.data?.totalSalary || 0);
+        } catch (e) {
+          console.error("Failed to refresh salary after save:", e);
+        }
       }
-    }
 
-    alert(editMode ? "✅ Record updated successfully!" : "✅ Record added successfully!");
-    setShowModal(false);
-    await fetchData();
-  } catch (err) {
-    console.error("❌ Save failed:", err);
-    alert("⚠️ Error saving record. See console for details.");
-  }
-};
+      alert(editMode ? "✅ Record updated successfully!" : "✅ Record added successfully!");
+      setShowModal(false);
+      await fetchData();
+    } catch (err) {
+      console.error("❌ Save failed:", err);
+      alert("⚠️ Error saving record. See console for details.");
+    }
+  };
 
   const handleDelete = async (item) => {
     if (!window.confirm("Delete this record?")) return;
@@ -137,9 +133,25 @@ export default function CrudTemplate({ title, apiEndpoint, columns, idField, onR
     }
   };
 
-  const handleRowClick = (row) => {
-    if (title.toLowerCase().includes("employee")) handleEmployeeClick(row);
-    else if (title.toLowerCase().includes("plant")) handlePlantClick(row);
+  // 🌍 Region click handler
+  const handleRowClick = async (row) => {
+    if (title.toLowerCase().includes("employee")) {
+      handleEmployeeClick(row);
+    } else if (title.toLowerCase().includes("plant")) {
+      handlePlantClick(row);
+    } else if (title.toLowerCase().includes("region")) {
+      try {
+        const res = await axios.get(`http://localhost:5000/api/region-summary/${row.regionID}`);
+        if (res.data?.success) {
+          setRegionSummary(res.data.data?.[0] || null);
+        } else {
+          alert("⚠️ No data available for this region.");
+        }
+      } catch (err) {
+        console.error("❌ Region summary fetch failed:", err);
+        alert("⚠️ Could not fetch region summary. Check console.");
+      }
+    }
   };
 
   return (
@@ -271,6 +283,23 @@ export default function CrudTemplate({ title, apiEndpoint, columns, idField, onR
               <p><strong>📍 Location:</strong> {plantInfo.location}</p>
               <p><strong>⚡ Capacity:</strong> {plantInfo.capacity}</p>
               <p><strong>💰 Total Salary:</strong> ₹{Number(totalSalary || 0).toLocaleString()}</p>
+            </div>
+          ) : (
+            <p>Loading...</p>
+          )}
+        </Modal.Body>
+      </Modal>
+
+      {/* 🌍 Region Summary Modal */}
+      <Modal show={!!regionSummary} onHide={() => setRegionSummary(null)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Region Energy Summary</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {regionSummary ? (
+            <div className="p-3 bg-light rounded">
+              <p><strong>📍 Region:</strong> {regionSummary.regionName}</p>
+              <p><strong>🏭 Plants Serving:</strong> {regionSummary.plantsServing ?? 0}</p>
             </div>
           ) : (
             <p>Loading...</p>
