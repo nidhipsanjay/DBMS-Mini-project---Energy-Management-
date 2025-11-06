@@ -15,7 +15,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 const db = mysql.createPool({
   host: "localhost",
   user: "root",
-  password: "appa2amma",
+  password: "",
   database: "EnergyManagement",
   waitForConnections: true,
   connectionLimit: 10,
