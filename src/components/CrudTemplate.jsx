@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Modal, Button } from 'react-bootstrap';
 import axios from 'axios';
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
 export default function CrudTemplate({ title, apiEndpoint, columns, idField, onRowClick }) {
   const [data, setData] = useState([]);
@@ -8,10 +10,18 @@ export default function CrudTemplate({ title, apiEndpoint, columns, idField, onR
   const [formData, setFormData] = useState({});
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(false);
+
   const [employeeInfo, setEmployeeInfo] = useState(null);
   const [plantInfo, setPlantInfo] = useState(null);
-  const [regionSummary, setRegionSummary] = useState(null); // 🌍 NEW STATE
+  const [regionSummary, setRegionSummary] = useState(null);
   const [totalSalary, setTotalSalary] = useState(0);
+
+  const [dropdownData, setDropdownData] = useState({
+    regions: [],
+    plants: [],
+    energytypes: [],
+    employees: []
+  });
 
   // Fetch table data
   const fetchData = async () => {
@@ -29,8 +39,29 @@ export default function CrudTemplate({ title, apiEndpoint, columns, idField, onR
     }
   };
 
+  // Fetch dropdowns for foreign keys
+  const fetchDropdowns = async () => {
+    try {
+      const [r, p, e, emp] = await Promise.all([
+        axios.get("http://localhost:5000/api/regions").catch(() => ({ data: [] })),
+        axios.get("http://localhost:5000/api/plants").catch(() => ({ data: [] })),
+        axios.get("http://localhost:5000/api/energytypes").catch(() => ({ data: [] })),
+        axios.get("http://localhost:5000/api/employees").catch(() => ({ data: [] })),
+      ]);
+      setDropdownData({
+        regions: r.data.data || r.data || [],
+        plants: p.data.data || p.data || [],
+        energytypes: e.data.data || e.data || [],
+        employees: emp.data.data || emp.data || [],
+      });
+    } catch (err) {
+      console.error("⚠️ Failed to fetch dropdown data:", err);
+    }
+  };
+
   useEffect(() => {
     fetchData();
+    fetchDropdowns();
   }, [apiEndpoint]);
 
   const handleChange = (e) => {
@@ -39,10 +70,6 @@ export default function CrudTemplate({ title, apiEndpoint, columns, idField, onR
 
   const openModal = (item = null) => {
     const record = { ...item };
-    if (item && !item[idField]) {
-      const keyMatch = Object.keys(item).find(k => k.toLowerCase() === idField.toLowerCase());
-      if (keyMatch) record[idField] = item[keyMatch];
-    }
     setFormData(record || {});
     setEditMode(!!item);
     setShowModal(true);
@@ -56,10 +83,7 @@ export default function CrudTemplate({ title, apiEndpoint, columns, idField, onR
       const cleanedData = { ...formData };
       Object.keys(cleanedData).forEach((key) => {
         const value = cleanedData[key];
-        if (value && typeof value === "string" && value.includes("T")) {
-          const d = new Date(value);
-          if (!isNaN(d)) cleanedData[key] = d.toISOString().split("T")[0];
-        }
+        if (value instanceof Date) cleanedData[key] = value.toISOString().split("T")[0];
       });
 
       const res = await fetch(url, {
@@ -72,15 +96,6 @@ export default function CrudTemplate({ title, apiEndpoint, columns, idField, onR
       if (!json || json.success !== true) {
         console.error("Save failed response:", json);
         throw new Error(json?.error || "Save failed");
-      }
-
-      if (plantInfo && formData.plantID && Number(formData.plantID) === Number(plantInfo.plantID)) {
-        try {
-          const s = await axios.get(`http://localhost:5000/api/total-salary/${plantInfo.plantID}`);
-          setTotalSalary(s.data?.totalSalary || 0);
-        } catch (e) {
-          console.error("Failed to refresh salary after save:", e);
-        }
       }
 
       alert(editMode ? "✅ Record updated successfully!" : "✅ Record added successfully!");
@@ -97,10 +112,7 @@ export default function CrudTemplate({ title, apiEndpoint, columns, idField, onR
     try {
       const res = await fetch(`${apiEndpoint}/${item[idField]}`, { method: "DELETE" });
       const json = await res.json();
-      if (!json || json.success !== true) {
-        console.error("Delete failed response:", json);
-        throw new Error(json?.error || "Delete failed");
-      }
+      if (!json || json.success !== true) throw new Error(json?.error || "Delete failed");
       alert("🗑️ Deleted successfully!");
       await fetchData();
     } catch (err) {
@@ -109,49 +121,95 @@ export default function CrudTemplate({ title, apiEndpoint, columns, idField, onR
     }
   };
 
-  const handleEmployeeClick = async (employee) => {
-    if (!title.toLowerCase().includes("employee") || !onRowClick) return;
-    try {
-      const result = await onRowClick(employee);
-      if (result && result.success && result.data) setEmployeeInfo(result.data);
-      else if (result && typeof result === "object") setEmployeeInfo(result);
-      else setEmployeeInfo(null);
-    } catch (err) {
-      console.error("❌ Employee info failed:", err);
-    }
-  };
-
-  const handlePlantClick = async (plant) => {
-    if (!title.toLowerCase().includes("plant")) return;
-    setPlantInfo(plant);
-    try {
-      const res = await axios.get(`http://localhost:5000/api/total-salary/${plant.plantID}`);
-      setTotalSalary(res.data?.totalSalary ?? 0);
-    } catch (err) {
-      console.error("❌ Salary fetch failed:", err);
-      setTotalSalary(0);
-    }
-  };
-
-  // 🌍 Region click handler
   const handleRowClick = async (row) => {
-    if (title.toLowerCase().includes("employee")) {
-      handleEmployeeClick(row);
+    if (title.toLowerCase().includes("employee") && onRowClick) {
+      const result = await onRowClick(row);
+      setEmployeeInfo(result?.data || result || null);
     } else if (title.toLowerCase().includes("plant")) {
-      handlePlantClick(row);
+      setPlantInfo(row);
+      try {
+        const res = await axios.get(`http://localhost:5000/api/total-salary/${row.plantID}`);
+        setTotalSalary(res.data?.totalSalary ?? 0);
+      } catch (err) {
+        console.error("❌ Salary fetch failed:", err);
+      }
     } else if (title.toLowerCase().includes("region")) {
       try {
         const res = await axios.get(`http://localhost:5000/api/region-summary/${row.regionID}`);
-        if (res.data?.success) {
-          setRegionSummary(res.data.data?.[0] || null);
-        } else {
-          alert("⚠️ No data available for this region.");
-        }
+        setRegionSummary(res.data?.data?.[0] || null);
       } catch (err) {
         console.error("❌ Region summary fetch failed:", err);
-        alert("⚠️ Could not fetch region summary. Check console.");
       }
     }
+  };
+
+  // Render each field in modal
+  const renderField = (col) => {
+    const lower = col.toLowerCase();
+
+    // Hide **only primary key**, not foreign keys
+    if (lower === idField.toLowerCase()) return null;
+
+    // Date fields
+    if (lower.includes("date")) {
+      const selectedDate = formData[col] ? new Date(formData[col]) : null;
+      return (
+        <>
+          <label className="form-label fw-semibold">{col}</label>
+          <DatePicker
+            selected={selectedDate}
+            onChange={(date) => setFormData({ ...formData, [col]: date })}
+            dateFormat="yyyy-MM-dd"
+            className="form-control"
+          />
+        </>
+      );
+    }
+
+    // Foreign key dropdowns
+    if (lower.endsWith("id") && lower !== idField.toLowerCase()) {
+      let options = [];
+      if (lower.includes("region")) options = dropdownData.regions;
+      else if (lower.includes("plant")) options = dropdownData.plants;
+      else if (lower.includes("energy")) options = dropdownData.energytypes;
+      else if (lower.includes("employee")) options = dropdownData.employees;
+
+      return (
+        <>
+          <label className="form-label fw-semibold">{col}</label>
+          <select
+            className="form-select"
+            name={col}
+            value={formData[col] ?? ""}
+            onChange={handleChange}
+          >
+            <option value="">Select {col}</option>
+            {options.map((opt) => {
+              const key = Object.keys(opt).find(k => k.toLowerCase().includes("id"));
+              const nameKey = Object.keys(opt).find(k => k.toLowerCase().includes("name")) || key;
+              return (
+                <option key={opt[key]} value={opt[key]}>
+                  {opt[nameKey]}
+                </option>
+              );
+            })}
+          </select>
+        </>
+      );
+    }
+
+    // Default text input
+    return (
+      <>
+        <label className="form-label fw-semibold">{col}</label>
+        <input
+          className="form-control"
+          name={col}
+          value={formData[col] ?? ""}
+          onChange={handleChange}
+        />
+      </>
+    );
   };
 
   return (
@@ -178,11 +236,7 @@ export default function CrudTemplate({ title, apiEndpoint, columns, idField, onR
             <tbody>
               {data.length > 0 ? (
                 data.map((row, idx) => (
-                  <tr
-                    key={idx}
-                    onClick={() => handleRowClick(row)}
-                    style={{ cursor: "pointer" }}
-                  >
+                  <tr key={idx} onClick={() => handleRowClick(row)} style={{ cursor: "pointer" }}>
                     {columns.map((col) => (
                       <td key={col}>{row[col]}</td>
                     ))}
@@ -223,7 +277,6 @@ export default function CrudTemplate({ title, apiEndpoint, columns, idField, onR
         )}
       </div>
 
-      {/* Modal for Add/Edit */}
       <Modal show={showModal} onHide={() => setShowModal(false)} centered>
         <Modal.Header closeButton>
           <Modal.Title>{editMode ? `Edit ${title}` : `Add New ${title}`}</Modal.Title>
@@ -231,80 +284,14 @@ export default function CrudTemplate({ title, apiEndpoint, columns, idField, onR
         <Modal.Body>
           {columns.map((col) => (
             <div key={col} className="mb-3">
-              <label className="form-label fw-semibold">{col}</label>
-              <input
-                className="form-control"
-                name={col}
-                value={formData[col] ?? ""}
-                onChange={handleChange}
-                readOnly={col === idField}
-              />
+              {renderField(col)}
             </div>
           ))}
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowModal(false)}>
-            Cancel
-          </Button>
-          <Button variant="primary" onClick={handleSave}>
-            Save
-          </Button>
+          <Button variant="secondary" onClick={() => setShowModal(false)}>Cancel</Button>
+          <Button variant="primary" onClick={handleSave}>Save</Button>
         </Modal.Footer>
-      </Modal>
-
-      {/* Employee Info Modal */}
-      <Modal show={!!employeeInfo} onHide={() => setEmployeeInfo(null)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>Employee Assignment</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {employeeInfo ? (
-            <div className="p-3 bg-light rounded">
-              <p><strong>👤 Employee:</strong> {employeeInfo.employeeName}</p>
-              <p><strong>📍 Region:</strong> {employeeInfo.regionName}</p>
-              <p><strong>🏭 Power Plant:</strong> {employeeInfo.plantName}</p>
-              <p><strong>⚡ Energy Type:</strong> {employeeInfo.energyType || "N/A"}</p>
-            </div>
-          ) : (
-            <p>Loading...</p>
-          )}
-        </Modal.Body>
-      </Modal>
-
-      {/* Power Plant Salary Modal */}
-      <Modal show={!!plantInfo} onHide={() => setPlantInfo(null)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>Power Plant Details</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {plantInfo ? (
-            <div className="p-3 bg-light rounded">
-              <p><strong>🏭 Plant:</strong> {plantInfo.name}</p>
-              <p><strong>📍 Location:</strong> {plantInfo.location}</p>
-              <p><strong>⚡ Capacity:</strong> {plantInfo.capacity}</p>
-              <p><strong>💰 Total Salary:</strong> ₹{Number(totalSalary || 0).toLocaleString()}</p>
-            </div>
-          ) : (
-            <p>Loading...</p>
-          )}
-        </Modal.Body>
-      </Modal>
-
-      {/* 🌍 Region Summary Modal */}
-      <Modal show={!!regionSummary} onHide={() => setRegionSummary(null)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>Region Energy Summary</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {regionSummary ? (
-            <div className="p-3 bg-light rounded">
-              <p><strong>📍 Region:</strong> {regionSummary.regionName}</p>
-              <p><strong>🏭 Plants Serving:</strong> {regionSummary.plantsServing ?? 0}</p>
-            </div>
-          ) : (
-            <p>Loading...</p>
-          )}
-        </Modal.Body>
       </Modal>
     </div>
   );

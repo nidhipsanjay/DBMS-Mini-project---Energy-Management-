@@ -1,4 +1,3 @@
-// server.js
 import express from "express";
 import cors from "cors";
 import mysql from "mysql2";
@@ -16,7 +15,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 const db = mysql.createPool({
   host: "localhost",
   user: "root",
-  password: "",
+  password: "appa2amma",
   database: "EnergyManagement",
   waitForConnections: true,
   connectionLimit: 10,
@@ -51,6 +50,21 @@ const refreshData = (table, res, err) => {
 };
 
 // -----------------------------
+// NEW: Get next available ID (fills gaps)
+const getNextAvailableID = async (table, idField) => {
+  try {
+    const [rows] = await promiseDb.query(`SELECT ${idField} FROM ${table} ORDER BY ${idField}`);
+    const usedIDs = rows.map(r => r[idField]);
+    let nextID = 1;
+    while (usedIDs.includes(nextID)) nextID++;
+    return nextID;
+  } catch (err) {
+    console.error("❌ Error computing next available ID:", err);
+    return null;
+  }
+};
+
+// -----------------------------
 // Generic CRUD generator
 // -----------------------------
 function createCrudRoutes(endpoint, table, idField) {
@@ -63,8 +77,14 @@ function createCrudRoutes(endpoint, table, idField) {
   });
 
   // CREATE
-  app.post(`/api/${endpoint}`, (req, res) => {
-    const data = req.body;
+  app.post(`/api/${endpoint}`, async (req, res) => {
+    let data = req.body;
+
+    // ✅ Assign next available ID automatically
+    const nextID = await getNextAvailableID(table, idField);
+    if (nextID === null) return res.status(500).json({ success: false, error: "Could not compute next ID" });
+    data[idField] = nextID;
+
     console.log(`🟢 POST /api/${endpoint}`, data);
     db.query(`INSERT INTO ${table} SET ?`, data, (err, insertResult) => {
       if (err) return res.status(500).json({ success: false, error: err.message });
@@ -262,6 +282,29 @@ app.get("/api/energy-summary/:energyTypeID", async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
+
+// =========================
+// 📊 Home Dashboard Summary (FINAL FIX — FRONTEND SAFE)
+// =========================
+app.get("/api/report/aggregate", async (req, res) => {
+  try {
+    const [rows] = await db.promise().query(`
+      SELECT
+        (SELECT COUNT(*) FROM PowerPlant) AS totalPlants,
+        (SELECT COUNT(*) FROM Employee) AS totalEmployees,
+        (SELECT IFNULL(SUM(energyProduced), 0) FROM ProductionLog) AS totalEnergy;
+    `);
+
+    // ✅ Make sure data structure matches Home.jsx expectations
+    res.json({ success: true, totals: rows[0] });
+  } catch (err) {
+    console.error("❌ Error fetching dashboard summary:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+
+
 
 // -----------------------------
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
