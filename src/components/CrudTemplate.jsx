@@ -4,18 +4,21 @@ import axios from 'axios';
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
-export default function CrudTemplate({ title, apiEndpoint, columns, idField, onRowClick }) {
+export default function CrudTemplate({ title, apiEndpoint, columns: initialColumns = [], idField, onRowClick }) {
   const [data, setData] = useState([]);
+  const [columns, setColumns] = useState(initialColumns);
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({});
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Row click modals
   const [employeeInfo, setEmployeeInfo] = useState(null);
   const [plantInfo, setPlantInfo] = useState(null);
   const [regionSummary, setRegionSummary] = useState(null);
   const [totalSalary, setTotalSalary] = useState(0);
 
+  // Dropdowns
   const [dropdownData, setDropdownData] = useState({
     regions: [],
     plants: [],
@@ -23,14 +26,18 @@ export default function CrudTemplate({ title, apiEndpoint, columns, idField, onR
     employees: []
   });
 
-  // Fetch table data
+  // -------------------- Fetch Table Data --------------------
   const fetchData = async () => {
     try {
       setLoading(true);
       const res = await fetch(apiEndpoint);
       const json = await res.json();
-      if (json && json.success) setData(json.data || []);
-      else setData(Array.isArray(json) ? json : []);
+      const rows = (json?.success && json.data) || (Array.isArray(json) ? json : []);
+      setData(rows);
+
+      if (rows.length > 0 && columns.length === 0) {
+        setColumns(Object.keys(rows[0]));
+      }
     } catch (err) {
       console.error("❌ Fetch failed:", err);
       setData([]);
@@ -39,7 +46,7 @@ export default function CrudTemplate({ title, apiEndpoint, columns, idField, onR
     }
   };
 
-  // Fetch dropdowns for foreign keys
+  // -------------------- Fetch Dropdowns --------------------
   const fetchDropdowns = async () => {
     try {
       const [r, p, e, emp] = await Promise.all([
@@ -48,6 +55,7 @@ export default function CrudTemplate({ title, apiEndpoint, columns, idField, onR
         axios.get("http://localhost:5000/api/energytypes").catch(() => ({ data: [] })),
         axios.get("http://localhost:5000/api/employees").catch(() => ({ data: [] })),
       ]);
+
       setDropdownData({
         regions: r.data.data || r.data || [],
         plants: p.data.data || p.data || [],
@@ -64,9 +72,8 @@ export default function CrudTemplate({ title, apiEndpoint, columns, idField, onR
     fetchDropdowns();
   }, [apiEndpoint]);
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  // -------------------- Form Handling --------------------
+  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
   const openModal = (item = null) => {
     const record = { ...item };
@@ -82,8 +89,7 @@ export default function CrudTemplate({ title, apiEndpoint, columns, idField, onR
     try {
       const cleanedData = { ...formData };
       Object.keys(cleanedData).forEach((key) => {
-        const value = cleanedData[key];
-        if (value instanceof Date) cleanedData[key] = value.toISOString().split("T")[0];
+        if (cleanedData[key] instanceof Date) cleanedData[key] = cleanedData[key].toISOString().split("T")[0];
       });
 
       const res = await fetch(url, {
@@ -91,19 +97,24 @@ export default function CrudTemplate({ title, apiEndpoint, columns, idField, onR
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(cleanedData),
       });
-      const json = await res.json();
 
-      if (!json || json.success !== true) {
-        console.error("Save failed response:", json);
-        throw new Error(json?.error || "Save failed");
+      const json = await res.json();
+      if (!json || json.success !== true) throw new Error(json?.error || "Save failed");
+
+      // Refresh salary if plant info is open
+      if (plantInfo && formData.plantID && Number(formData.plantID) === Number(plantInfo.plantID)) {
+        try {
+          const s = await axios.get(`http://localhost:5000/api/total-salary/${plantInfo.plantID}`);
+          setTotalSalary(s.data?.totalSalary || 0);
+        } catch (e) { console.error("Failed to refresh salary:", e); }
       }
 
       alert(editMode ? "✅ Record updated successfully!" : "✅ Record added successfully!");
       setShowModal(false);
-      await fetchData();
+      fetchData();
     } catch (err) {
       console.error("❌ Save failed:", err);
-      alert("⚠️ Error saving record. See console for details.");
+      alert("⚠️ Error saving record. See console.");
     }
   };
 
@@ -114,26 +125,40 @@ export default function CrudTemplate({ title, apiEndpoint, columns, idField, onR
       const json = await res.json();
       if (!json || json.success !== true) throw new Error(json?.error || "Delete failed");
       alert("🗑️ Deleted successfully!");
-      await fetchData();
+      fetchData();
     } catch (err) {
       console.error("❌ Delete failed:", err);
       alert("⚠️ Error deleting record. See console.");
     }
   };
 
+  // -------------------- Row Click Handlers --------------------
+  const handleEmployeeClick = async (employee) => {
+    if (!title.toLowerCase().includes("employee") || !onRowClick) return;
+    try {
+      const result = await onRowClick(employee);
+      if (result?.success && result.data) setEmployeeInfo(result.data);
+      else if (typeof result === "object") setEmployeeInfo(result);
+      else setEmployeeInfo(null);
+    } catch (err) { console.error("❌ Employee info failed:", err); }
+  };
+
+  const handlePlantClick = async (plant) => {
+    if (!title.toLowerCase().includes("plant")) return;
+    setPlantInfo(plant);
+    try {
+      const res = await axios.get(`http://localhost:5000/api/total-salary/${plant.plantID}`);
+      setTotalSalary(res.data?.totalSalary ?? 0);
+    } catch (err) {
+      console.error("❌ Salary fetch failed:", err);
+      setTotalSalary(0);
+    }
+  };
+
   const handleRowClick = async (row) => {
-    if (title.toLowerCase().includes("employee") && onRowClick) {
-      const result = await onRowClick(row);
-      setEmployeeInfo(result?.data || result || null);
-    } else if (title.toLowerCase().includes("plant")) {
-      setPlantInfo(row);
-      try {
-        const res = await axios.get(`http://localhost:5000/api/total-salary/${row.plantID}`);
-        setTotalSalary(res.data?.totalSalary ?? 0);
-      } catch (err) {
-        console.error("❌ Salary fetch failed:", err);
-      }
-    } else if (title.toLowerCase().includes("region")) {
+    if (title.toLowerCase().includes("employee")) handleEmployeeClick(row);
+    else if (title.toLowerCase().includes("plant")) handlePlantClick(row);
+    else if (title.toLowerCase().includes("region")) {
       try {
         const res = await axios.get(`http://localhost:5000/api/region-summary/${row.regionID}`);
         setRegionSummary(res.data?.data?.[0] || null);
@@ -143,14 +168,12 @@ export default function CrudTemplate({ title, apiEndpoint, columns, idField, onR
     }
   };
 
-  // Render each field in modal
+  // -------------------- Render Field --------------------
   const renderField = (col) => {
     const lower = col.toLowerCase();
 
-    // Hide **only primary key**, not foreign keys
     if (lower === idField.toLowerCase()) return null;
 
-    // Date fields
     if (lower.includes("date")) {
       const selectedDate = formData[col] ? new Date(formData[col]) : null;
       return (
@@ -166,7 +189,6 @@ export default function CrudTemplate({ title, apiEndpoint, columns, idField, onR
       );
     }
 
-    // Foreign key dropdowns
     if (lower.endsWith("id") && lower !== idField.toLowerCase()) {
       let options = [];
       if (lower.includes("region")) options = dropdownData.regions;
@@ -187,18 +209,13 @@ export default function CrudTemplate({ title, apiEndpoint, columns, idField, onR
             {options.map((opt) => {
               const key = Object.keys(opt).find(k => k.toLowerCase().includes("id"));
               const nameKey = Object.keys(opt).find(k => k.toLowerCase().includes("name")) || key;
-              return (
-                <option key={opt[key]} value={opt[key]}>
-                  {opt[nameKey]}
-                </option>
-              );
+              return <option key={opt[key]} value={opt[key]}>{opt[nameKey]}</option>;
             })}
           </select>
         </>
       );
     }
 
-    // Default text input
     return (
       <>
         <label className="form-label fw-semibold">{col}</label>
@@ -212,86 +229,102 @@ export default function CrudTemplate({ title, apiEndpoint, columns, idField, onR
     );
   };
 
+  // -------------------- Render --------------------
   return (
     <div className="fade-page">
       <h3 className="mb-4 fw-bold">{title}</h3>
 
-      <Button className="mb-3 btn-primary" onClick={() => openModal()}>
-        + Add New
-      </Button>
+      <Button className="mb-3 btn-primary" onClick={() => openModal()}>+ Add New</Button>
 
       <div className="table-responsive">
-        {loading ? (
-          <p className="text-center text-muted">Loading...</p>
-        ) : (
+        {loading ? <p className="text-center text-muted">Loading...</p> : (
           <table className="table table-striped table-hover align-middle">
             <thead className="table-dark">
               <tr>
-                {columns.map((col) => (
-                  <th key={col}>{col}</th>
-                ))}
+                {columns.map((col) => <th key={col}>{col}</th>)}
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {data.length > 0 ? (
-                data.map((row, idx) => (
-                  <tr key={idx} onClick={() => handleRowClick(row)} style={{ cursor: "pointer" }}>
-                    {columns.map((col) => (
-                      <td key={col}>{row[col]}</td>
-                    ))}
-                    <td>
-                      <Button
-                        variant="outline-secondary"
-                        size="sm"
-                        className="me-2"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openModal(row);
-                        }}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="outline-danger"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(row);
-                        }}
-                      >
-                        Delete
-                      </Button>
+              {data.length > 0 ? data.map((row, idx) => (
+                <tr key={idx} onClick={() => handleRowClick(row)} style={{ cursor: "pointer" }}>
+                  {columns.map((col) => (
+                    <td key={col}>
+                      {row[col] && typeof row[col] === "object" ? JSON.stringify(row[col]) : row[col]}
                     </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={columns.length + 1} className="text-center text-muted">
-                    No records found
+                  ))}
+                  <td>
+                    <Button variant="outline-secondary" size="sm" className="me-2" onClick={e => { e.stopPropagation(); openModal(row); }}>Edit</Button>
+                    <Button variant="outline-danger" size="sm" onClick={e => { e.stopPropagation(); handleDelete(row); }}>Delete</Button>
                   </td>
                 </tr>
-              )}
+              )) : <tr><td colSpan={columns.length + 1} className="text-center text-muted">No records found</td></tr>}
             </tbody>
           </table>
         )}
       </div>
 
+      {/* Add/Edit Modal */}
       <Modal show={showModal} onHide={() => setShowModal(false)} centered>
         <Modal.Header closeButton>
           <Modal.Title>{editMode ? `Edit ${title}` : `Add New ${title}`}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          {columns.map((col) => (
-            <div key={col} className="mb-3">
-              {renderField(col)}
-            </div>
-          ))}
+          {columns.map((col) => <div key={col} className="mb-3">{renderField(col)}</div>)}
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowModal(false)}>Cancel</Button>
           <Button variant="primary" onClick={handleSave}>Save</Button>
         </Modal.Footer>
+      </Modal>
+
+      {/* Employee Info Modal */}
+      <Modal show={!!employeeInfo} onHide={() => setEmployeeInfo(null)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Employee Assignment</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {employeeInfo ? (
+            <div className="p-3 bg-light rounded">
+              <p><strong>👤 Employee:</strong> {employeeInfo.employeeName}</p>
+              <p><strong>📍 Region:</strong> {employeeInfo.regionName}</p>
+              <p><strong>🏭 Power Plant:</strong> {employeeInfo.plantName}</p>
+              <p><strong>⚡ Energy Type:</strong> {employeeInfo.energyType || "N/A"}</p>
+            </div>
+          ) : <p>Loading...</p>}
+        </Modal.Body>
+      </Modal>
+
+      {/* Plant Modal */}
+      <Modal show={!!plantInfo} onHide={() => setPlantInfo(null)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Power Plant Details</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {plantInfo ? (
+            <div className="p-3 bg-light rounded">
+              <p><strong>🏭 Plant:</strong> {plantInfo.name}</p>
+              <p><strong>📍 Location:</strong> {plantInfo.location}</p>
+              <p><strong>⚡ Capacity:</strong> {plantInfo.capacity}</p>
+              <p><strong>💰 Total Salary:</strong> ₹{Number(totalSalary || 0).toLocaleString()}</p>
+            </div>
+          ) : <p>Loading...</p>}
+        </Modal.Body>
+      </Modal>
+
+      {/* Region Modal */}
+      <Modal show={!!regionSummary} onHide={() => setRegionSummary(null)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Region Energy Summary</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {regionSummary ? (
+            <div className="p-3 bg-light rounded">
+              <p><strong>📍 Region:</strong> {regionSummary.regionName}</p>
+              <p><strong>🏭 Plants Serving:</strong> {regionSummary.plantsServing ?? 0}</p>
+            </div>
+          ) : <p>Loading...</p>}
+        </Modal.Body>
       </Modal>
     </div>
   );
