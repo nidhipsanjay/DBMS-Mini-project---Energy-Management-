@@ -15,7 +15,6 @@ A lightweight web GUI and API for managing energy plants, production, distributi
 
 **Important:** The sample backend currently contains inline MySQL credentials in `backend/server.js`. Do not use these credentials in production. Instead use environment variables or a secrets manager and add the credentials file to `.gitignore`.
  
---
 
 **Requirements**
 - Node.js (v16+ recommended)
