@@ -1,5 +1,8 @@
-# Energy Management DBMS (React + Express + MySQL)
+**Nidhi Sanjay PES1UG23CS391**
 
+**Nithya Anantharaman PES1UG23CS405**
+
+# Energy Management DBMS (React + Express + MySQL)
 A lightweight web GUI and API for managing energy plants, production, distribution, regions, employees and reports. This repository contains a React frontend (`src/`) and a Node/Express backend (`backend/`) which connects to a MySQL database.
 
 **Status:** Working prototype — backend runs from `backend/server.js` and frontend is a React app started from the repo root.
